@@ -1,0 +1,8 @@
+{
+  "name": "vCreative Sandbox",
+  "description": "Secure client terminal and creative layout playground console for building interactive components.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
