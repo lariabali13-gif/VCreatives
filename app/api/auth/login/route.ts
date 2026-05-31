@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMongoDb } from "@/lib/mongodb";
+import { verifyPassword } from "@/lib/auth/password";
+import { findUserByEmail } from "@/lib/models/User";
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,51 +9,58 @@ export async function POST(req: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "Email and password are required fields" },
+        { error: "Email aur password dono zaroori hain." },
         { status: 400 }
       );
     }
 
     const db = await getMongoDb();
     if (!db) {
-      // Fallback response indicating database is not yet hooked up on server
       return NextResponse.json({ 
-        useFallback: true, 
-        message: "No server-side MongoDB connection detected. Running in client mode." 
-      });
+        error: "Database connection nahi ho saka."
+      }, { status: 500 });
     }
 
-    const usersCollection = db.collection("users");
-    const user = await usersCollection.findOne({ email: email.toLowerCase() });
+    // Find user by email
+    const user = await findUserByEmail(db, email);
 
     if (!user) {
       return NextResponse.json(
-        { error: "Is email address ka koi user database mein nahi mila!" },
+        { error: "Is email address ka koi account nahi mila!" },
         { status: 404 }
       );
     }
 
-    if (user.password !== password) {
+    // Verify password
+    if (!user.password) {
       return NextResponse.json(
-        { error: "Ghalat password! Meherbani karke apna password sahi se enter karein." },
+        { error: "Is account ke liye password set nahi hai." },
+        { status: 401 }
+      );
+    }
+
+    const isPasswordValid = await verifyPassword(password, user.password);
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { error: "Ghalat password!" },
         { status: 401 }
       );
     }
 
     return NextResponse.json({
       success: true,
+      message: "Aap successfully login ho gaye!",
       user: {
-        fullName: user.fullName || "User",
-        username: user.username || "user",
+        id: user._id?.toString(),
+        name: user.name || "User",
         email: user.email,
-        authMethod: user.authMethod || "Email Verification (Atlas Core Connected)"
       }
     });
 
   } catch (err: any) {
-    console.error("Server Login Exception:", err);
+    console.error("[v0] Login Exception:", err);
     return NextResponse.json(
-      { error: `Database Authentication Error: ${err.message || err}` },
+      { error: `Login mein error: ${err.message || err}` },
       { status: 500 }
     );
   }

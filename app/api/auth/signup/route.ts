@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMongoDb } from "@/lib/mongodb";
+import { hashPassword } from "@/lib/auth/password";
+import { findUserByEmail, createUser } from "@/lib/models/User";
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,7 +9,14 @@ export async function POST(req: NextRequest) {
 
     if (!fullName || !username || !email || !password) {
       return NextResponse.json(
-        { error: "All profile fields are mandatory." },
+        { error: "Tamaam fields maandatory hain." },
+        { status: 400 }
+      );
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "Password kam se kam 6 characters hona chahiye." },
         { status: 400 }
       );
     }
@@ -15,47 +24,43 @@ export async function POST(req: NextRequest) {
     const db = await getMongoDb();
     if (!db) {
       return NextResponse.json({ 
-        useFallback: true, 
-        message: "No server-side MongoDB connection detected. Running in client mode." 
-      });
+        error: "Database connection nahi ho saka." 
+      }, { status: 500 });
     }
-
-    const usersCollection = db.collection("users");
     
     // Check if user already exists
-    const existingUser = await usersCollection.findOne({ email: email.toLowerCase() });
+    const existingUser = await findUserByEmail(db, email);
     if (existingUser) {
       return NextResponse.json(
-        { error: "Is email address par already aik account registered hai! Meherbani karke login karein." },
+        { error: "Is email address par already account registered hai!" },
         { status: 409 }
       );
     }
 
-    const newUser = {
-      fullName,
-      username,
-      email: email.toLowerCase(),
-      password, // Note: In production use Bcrypt/Argon2. We store as-is for high-fidelity sync.
-      authMethod: "Email Registry (Atlas Core Connected)",
-      createdAt: new Date().toISOString()
-    };
+    // Hash password
+    const hashedPassword = await hashPassword(password);
 
-    await usersCollection.insertOne(newUser);
+    // Create new user
+    const userId = await createUser(db, {
+      name: fullName,
+      email,
+      password: hashedPassword,
+    });
 
     return NextResponse.json({
       success: true,
+      message: "Account successfully banaya gaya!",
       user: {
-        fullName: newUser.fullName,
-        username: newUser.username,
-        email: newUser.email,
-        authMethod: newUser.authMethod
+        id: userId,
+        name: fullName,
+        email: email.toLowerCase(),
       }
     });
 
   } catch (err: any) {
-    console.error("Server Signup Exception:", err);
+    console.error("[v0] Signup Exception:", err);
     return NextResponse.json(
-      { error: `Database Registration Error: ${err.message || err}` },
+      { error: `Registration mein error: ${err.message || err}` },
       { status: 500 }
     );
   }

@@ -14,36 +14,49 @@ export default function LoginPage() {
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
-      setError("Please fill out all credentials parameters.");
+      setError("Sab fields fill karo please.");
       return;
     }
 
     setLoading(true);
     setError("");
 
-    setTimeout(() => {
-      const userObj = {
-        username: email.split("@")[0] || "lariab",
-        fullName: email === "lariabali13@gmail.com" ? "Lariab Ali" : "Developer Sandbox",
-        email: email
-      };
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-      localStorage.setItem("currentUser", JSON.stringify(userObj));
-      
-      if (email === "lariabali13@gmail.com") {
-        localStorage.setItem("vC_mongo_uri", "mongodb+srv://bilalbhai123ws:cluster0");
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Login fail ho gaya!");
+        setLoading(false);
+        return;
       }
 
-      // Propagate credential sync
+      // Save user to localStorage
+      localStorage.setItem("currentUser", JSON.stringify({
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+      }));
+
+      // Trigger credential update
       const event = new Event("credentialsUpdated");
       window.dispatchEvent(event);
 
       setLoading(false);
       router.push("/");
-    }, 1000);
+    } catch (err: any) {
+      console.error("[v0] Login Error:", err);
+      setError("Kuch error aya hai, dobara try karo.");
+      setLoading(false);
+    }
   };
 
   const autofillTestUser = () => {

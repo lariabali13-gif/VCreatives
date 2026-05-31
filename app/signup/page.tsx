@@ -10,46 +10,69 @@ export default function SignupPage() {
 
   // Form states
   const [fullName, setFullName] = useState<string>("");
-  const [username, setUsername] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !username || !email || !password) {
-      setError("Please fill out all registration parameters.");
+    if (!fullName || !email || !password) {
+      setError("Sab zaroori fields fill karo.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password kam se kam 6 characters hona chahiye.");
       return;
     }
 
     setLoading(true);
     setError("");
 
-    setTimeout(() => {
-      const userObj = {
-        username: username.trim().toLowerCase().replace(/\s+/g, ""),
-        fullName: fullName.trim(),
-        email: email.trim().toLowerCase()
-      };
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
 
-      localStorage.setItem("currentUser", JSON.stringify(userObj));
-      localStorage.setItem("vC_mongo_uri", "mongodb+srv://bilalbhai123ws:cluster0");
+      const data = await response.json();
 
-      // Propagate credential sync
+      if (!response.ok) {
+        setError(data.error || "Signup fail ho gaya!");
+        setLoading(false);
+        return;
+      }
+
+      // Save user to localStorage
+      localStorage.setItem("currentUser", JSON.stringify({
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+      }));
+
+      // Trigger credential update
       const event = new Event("credentialsUpdated");
       window.dispatchEvent(event);
 
       setLoading(false);
       router.push("/");
-    }, 1000);
+    } catch (err: any) {
+      console.error("[v0] Signup Error:", err);
+      setError("Kuch error aya hai, dobara try karo.");
+      setLoading(false);
+    }
   };
 
   const autofillDemoInfo = () => {
     setFullName("Lariab Ali");
-    setUsername("lariab");
     setEmail("lariabali13@gmail.com");
-    setPassword("demo255");
+    setPassword("demo2026");
     setError("");
   };
 
@@ -169,21 +192,6 @@ export default function SignupPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Lariab Ali"
-                className="w-full bg-[#04060d] border border-slate-900 hover:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-700 focus:outline-none focus:border-amber-400/40 focus:ring-1 focus:ring-amber-400/20"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="username" className="block text-xs font-semibold text-amber-400 font-mono">
-                @username
-              </label>
-              <input
-                id="username"
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="lariab"
                 className="w-full bg-[#04060d] border border-slate-900 hover:border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-700 focus:outline-none focus:border-amber-400/40 focus:ring-1 focus:ring-amber-400/20"
               />
             </div>
