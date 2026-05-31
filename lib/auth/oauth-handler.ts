@@ -1,5 +1,5 @@
 import { Db } from 'mongodb';
-import { findUserByGoogleId, findUserByGithubId, createUser } from './models/User';
+import { findUserByGoogleId, findUserByGithubId, createUser } from '../models/User';
 
 export interface GoogleProfile {
   id: string;

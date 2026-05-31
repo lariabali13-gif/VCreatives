@@ -5,9 +5,9 @@ import { findUserByEmail, createUser } from "@/lib/models/User";
 
 export async function POST(req: NextRequest) {
   try {
-    const { fullName, username, email, password } = await req.json();
+    const { fullName, email, password } = await req.json();
 
-    if (!fullName || !username || !email || !password) {
+    if (!fullName || !email || !password) {
       return NextResponse.json(
         { error: "Tamaam fields maandatory hain." },
         { status: 400 }
@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
 
     const db = await getMongoDb();
     if (!db) {
+      console.error("[v0] MongoDB connection failed in signup");
       return NextResponse.json({ 
         error: "Database connection nahi ho saka." 
       }, { status: 500 });
